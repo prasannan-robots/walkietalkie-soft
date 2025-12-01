@@ -1,0 +1,36 @@
+{
+  "name": "DMR828S",
+  "version": "2.0.0",
+  "description": "Refactored driver library for DMR818S/DMR828S DMR radio modules with both low-level protocol access and high-level convenience functions. Supports event handling, configuration management, and direct protocol manipulation.",
+  "keywords": [
+    "dmr",
+    "radio",
+    "dmr828s",
+    "dmr818s",
+    "walkie",
+    "sms",
+    "digital",
+    "protocol",
+    "esp32",
+    "arduino"
+  ],
+  "authors": [
+    {
+      "name": "Your Name",
+      "email": "you@example.com"
+    }
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourname/DMR828S"
+  },
+  "frameworks": ["arduino"],
+  "platforms": ["espressif32", "espressif8266", "atmelavr"],
+  "build": {
+    "srcFilter": [
+      "+<*.cpp>",
+      "+<*.h>"
+    ]
+  }
+}
