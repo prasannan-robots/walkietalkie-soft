@@ -52,6 +52,15 @@ void parseNMEA(String sentence) {
         
         // Check if we have a valid fix (field 6)
         if (fields[6].toInt() > 0) {
+            // Parse time (field 1) - format HHMMSS.sss
+            if (fields[1].length() >= 6) {
+                String timeStr = fields[1];
+                gpsState.gpsHour = timeStr.substring(0, 2).toInt();
+                gpsState.gpsMinute = timeStr.substring(2, 4).toInt();
+                gpsState.gpsSecond = timeStr.substring(4, 6).toInt();
+                gpsState.hasValidTime = true;
+            }
+            
             // Parse latitude (field 2) and direction (field 3)
             if (fields[2].length() > 0 && fields[4].length() > 0) {
                 double lat = fields[2].toDouble();
@@ -77,6 +86,38 @@ void parseNMEA(String sentence) {
             }
         } else {
             gpsState.hasValidFix = false;
+        }
+    }
+    
+    // Parse GPRMC or GNRMC sentences for date information
+    if (sentence.startsWith("$GPRMC") || sentence.startsWith("$GNRMC")) {
+        // Split sentence by commas
+        int commaCount = 0;
+        String fields[12]; // GPRMC has up to 11 fields
+        int startIndex = 0;
+        
+        for (int i = 0; i < sentence.length() && commaCount < 11; i++) {
+            if (sentence.charAt(i) == ',') {
+                fields[commaCount] = sentence.substring(startIndex, i);
+                startIndex = i + 1;
+                commaCount++;
+            }
+        }
+        // Get last field
+        if (commaCount < 11) {
+            fields[commaCount] = sentence.substring(startIndex);
+        }
+        
+        // Check if data is valid (field 2)
+        if (fields[2] == "A") {
+            // Parse date (field 9) - format DDMMYY
+            if (fields[9].length() >= 6) {
+                String dateStr = fields[9];
+                gpsState.gpsDay = dateStr.substring(0, 2).toInt();
+                gpsState.gpsMonth = dateStr.substring(2, 4).toInt();
+                int year = dateStr.substring(4, 6).toInt();
+                gpsState.gpsYear = (year < 80) ? 2000 + year : 1900 + year; // Y2K handling
+            }
         }
     }
 }
@@ -129,5 +170,46 @@ void handleContinuousGPS() {
         
         // Send GPS location notification - actual sending handled by main
         // This function just manages timing
+    }
+}
+
+String getGPSTimestamp() {
+    if (gpsState.hasValidTime) {
+        // Format: YYYY-MM-DDTHH:MM:SSZ
+        String timestamp = String(gpsState.gpsYear) + "-";
+        
+        if (gpsState.gpsMonth < 10) timestamp += "0";
+        timestamp += String(gpsState.gpsMonth) + "-";
+        
+        if (gpsState.gpsDay < 10) timestamp += "0";
+        timestamp += String(gpsState.gpsDay) + "T";
+        
+        if (gpsState.gpsHour < 10) timestamp += "0";
+        timestamp += String(gpsState.gpsHour) + ":";
+        
+        if (gpsState.gpsMinute < 10) timestamp += "0";
+        timestamp += String(gpsState.gpsMinute) + ":";
+        
+        if (gpsState.gpsSecond < 10) timestamp += "0";
+        timestamp += String(gpsState.gpsSecond) + "Z";
+        
+        return timestamp;
+    } else {
+        // Fallback to system time if GPS time not available
+        String timestamp = "2025-11-20T";
+        
+        unsigned long currentTime = millis() / 1000;
+        int hours = (currentTime / 3600) % 24;
+        int minutes = (currentTime / 60) % 60;
+        int seconds = currentTime % 60;
+        
+        if (hours < 10) timestamp += "0";
+        timestamp += String(hours) + ":";
+        if (minutes < 10) timestamp += "0";
+        timestamp += String(minutes) + ":";
+        if (seconds < 10) timestamp += "0";
+        timestamp += String(seconds) + "Z";
+        
+        return timestamp;
     }
 }

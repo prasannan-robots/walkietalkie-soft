@@ -37,6 +37,9 @@ void loop() {
     // Handle continuous GPS transmission
     handleContinuousGPS();
     
+    // Check for incoming GSM SMS
+    checkIncomingGSMSMS();
+    
     // Handle Bluetooth commands
     handleBluetoothCommands();
     

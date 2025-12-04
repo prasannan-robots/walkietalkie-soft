@@ -361,15 +361,16 @@ void createEncryptionMenu() {
 void createSMSMenu() {
     displayState.currentMenu.title = "SMS & GSM";
     displayState.currentMenu.selectedItem = 0;
-    displayState.currentMenu.itemCount = 7;
+    displayState.currentMenu.itemCount = 8;
     
     displayState.currentMenu.items[0] = {"Send SMS", "input_sms", false};
     displayState.currentMenu.items[1] = {"Send GSM SMS", "input_gsmsms", false};
     displayState.currentMenu.items[2] = {"Set GSM Phone", "input_gsmphone", false};
-    displayState.currentMenu.items[3] = {"GSM Status", "gsmstatus", false};
-    displayState.currentMenu.items[4] = {"SMS Info", "smsinfo", false};
-    displayState.currentMenu.items[5] = {"GSM Control", "gsm_menu", true};
-    displayState.currentMenu.items[6] = {"Back", "back", false};
+    displayState.currentMenu.items[3] = {"Set Soldier ID", "input_soldierid", false};
+    displayState.currentMenu.items[4] = {"GSM Status", "gsmstatus", false};
+    displayState.currentMenu.items[5] = {"SMS Info", "smsinfo", false};
+    displayState.currentMenu.items[6] = {"GSM Control", "gsm_menu", true};
+    displayState.currentMenu.items[7] = {"Back", "back", false};
 }
 
 void createDebugMenu() {
@@ -514,9 +515,11 @@ void executeMenuAction(String action) {
         } else if (action == "input_encryptkey") {
             startInput("Enter Key (32 hex):", "encryptkey ");
         } else if (action == "input_sms") {
-            startInput("Enter ID:Message:", "sms ");
+            String prompts[] = {"Enter Radio ID:", "Enter Message:"};
+            startMultiStepInput("sms ", prompts, 2);
         } else if (action == "input_gsmsms") {
-            startInput("Enter Phone:Msg:", "gsmsms ");
+            String prompts[] = {"Enter Phone #:", "Enter Message:"};
+            startMultiStepInput("gsmsms ", prompts, 2);
         } else if (action == "input_gsmphone") {
             startInput("Enter Phone #:", "gsmphone ");
         } else if (action == "input_raw") {
@@ -524,7 +527,10 @@ void executeMenuAction(String action) {
         } else if (action == "input_gps") {
             startInput("Enter Radio ID:", "gps ");
         } else if (action == "input_gpsauto") {
-            startInput("Enter ID Minutes:", "gpsauto ");
+            String prompts[] = {"Enter Radio ID:", "Enter Minutes:"};
+            startMultiStepInput("gpsauto ", prompts, 2);
+        } else if (action == "input_soldierid") {
+            startInput("Enter Soldier ID:", "soldierid ");
         }
         return;
     }
@@ -667,6 +673,12 @@ void startInput(String prompt, String action) {
 void handleInput(char c) {
     if (!displayState.inputMode) return;
     
+    // Use multi-step input handler if in multi-step mode
+    if (displayState.multiStepInput) {
+        handleMultiStepInput(c);
+        return;
+    }
+    
     if (c == '#') {
         // Cancel input
         cancelInput();
@@ -710,8 +722,20 @@ void showInputScreen() {
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_6x10_tf);
     
-    // Title
-    u8g2.drawStr(0, 10, "Input Required");
+    // Title with step info for multi-step input
+    if (displayState.multiStepInput) {
+        String title = "Step " + String(displayState.inputStep + 1);
+        u8g2.drawStr(0, 10, title.c_str());
+        
+        // Show previous step values
+        if (displayState.inputStep > 0) {
+            u8g2.setFont(u8g2_font_4x6_tf);
+            u8g2.drawStr(80, 10, displayState.stepValues[displayState.inputStep - 1].c_str());
+            u8g2.setFont(u8g2_font_6x10_tf);
+        }
+    } else {
+        u8g2.drawStr(0, 10, "Input Required");
+    }
     u8g2.drawHLine(0, 12, 128);
     
     // Prompt
@@ -723,7 +747,11 @@ void showInputScreen() {
     
     // Help text
     u8g2.setFont(u8g2_font_4x6_tf);
-    u8g2.drawStr(0, 55, "Enter value, * to confirm");
+    if (displayState.multiStepInput) {
+        u8g2.drawStr(0, 55, "Enter value, * for next step");
+    } else {
+        u8g2.drawStr(0, 55, "Enter value, * to confirm");
+    }
     u8g2.drawStr(0, 62, "# to cancel, C to backspace");
     
     u8g2.sendBuffer();
@@ -773,4 +801,90 @@ void displayCapturedOutput() {
         showMessage(displayState.lastCommandOutput, 5000);
         displayState.lastCommandOutput = "";
     }
+}
+
+// =============== MULTI-STEP INPUT SYSTEM ===============
+
+void startMultiStepInput(String action, String prompts[], int stepCount) {
+    displayState.multiStepInput = true;
+    displayState.inputMode = true;
+    displayState.inputStep = 0;
+    displayState.pendingAction = action;
+    
+    // Copy prompts to display state
+    for (int i = 0; i < stepCount && i < 3; i++) {
+        displayState.stepPrompts[i] = prompts[i];
+        displayState.stepValues[i] = "";
+    }
+    
+    // Start with first prompt
+    displayState.inputPrompt = displayState.stepPrompts[0];
+    displayState.inputValue = "";
+    showInputScreen();
+}
+
+void handleMultiStepInput(char c) {
+    if (!displayState.inputMode || !displayState.multiStepInput) return;
+    
+    if (c == '#') {
+        // Cancel multi-step input
+        displayState.multiStepInput = false;
+        displayState.inputStep = 0;
+        cancelInput();
+    } else if (c == '*') {
+        // Confirm current step
+        if (displayState.inputValue.length() > 0) {
+            // Save current step value
+            displayState.stepValues[displayState.inputStep] = displayState.inputValue;
+            nextInputStep();
+        }
+    } else if (c == 'C') {
+        // Backspace
+        if (displayState.inputValue.length() > 0) {
+            displayState.inputValue.remove(displayState.inputValue.length() - 1);
+            showInputScreen();
+        }
+    } else if (c != 0) {
+        // Add character
+        displayState.inputValue += c;
+        showInputScreen();
+    }
+}
+
+void nextInputStep() {
+    displayState.inputStep++;
+    
+    // Check if we need more steps
+    if (displayState.inputStep < 3 && displayState.stepPrompts[displayState.inputStep].length() > 0) {
+        // Move to next step
+        displayState.inputPrompt = displayState.stepPrompts[displayState.inputStep];
+        displayState.inputValue = "";
+        showInputScreen();
+    } else {
+        // All steps completed
+        completeMultiStepInput();
+    }
+}
+
+void completeMultiStepInput() {
+    // Build command from all step values
+    String fullCommand = displayState.pendingAction;
+    for (int i = 0; i < displayState.inputStep; i++) {
+        if (i > 0) fullCommand += " ";
+        fullCommand += displayState.stepValues[i];
+    }
+    
+    // Execute command
+    captureCommandOutput(fullCommand);
+    processCommand(&SerialBT, fullCommand);
+    
+    // Reset multi-step state
+    displayState.multiStepInput = false;
+    displayState.inputStep = 0;
+    displayState.inputMode = false;
+    
+    // Show result
+    displayCapturedOutput();
+    displayState.inMenu = false;
+    delay(500);
 }

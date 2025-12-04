@@ -127,3 +127,70 @@ void sendGSMFallbackSMS(String phoneNumber, String message) {
         SerialBT.println("❌ Failed to send fallback SMS");
     }
 }
+
+void checkIncomingGSMSMS() {
+    // Check for incoming SMS notifications
+    if (Serial1.available()) {
+        String response = "";
+        unsigned long startTime = millis();
+        
+        while (millis() - startTime < 100 && Serial1.available()) {
+            response += (char)Serial1.read();
+            delay(1);
+        }
+        
+        // Look for SMS notification: +CMTI: "SM",<index>
+        if (response.indexOf("+CMTI:") != -1) {
+            int indexStart = response.lastIndexOf(",") + 1;
+            if (indexStart > 0) {
+                String indexStr = response.substring(indexStart);
+                indexStr.trim();
+                int smsIndex = indexStr.toInt();
+                
+                if (smsIndex > 0) {
+                    readGSMSMS(smsIndex);
+                }
+            }
+        }
+    }
+}
+
+void readGSMSMS(int index) {
+    // Read SMS at specified index
+    Serial1.print("AT+CMGR=");
+    Serial1.println(index);
+    delay(1000);
+    
+    String response = "";
+    unsigned long startTime = millis();
+    
+    while (millis() - startTime < 3000 && Serial1.available()) {
+        response += (char)Serial1.read();
+        delay(1);
+    }
+    
+    // Parse SMS content
+    // Format: +CMGR: "REC UNREAD","+phoneNumber","","timestamp"\r\nMessage content
+    if (response.indexOf("+CMGR:") != -1) {
+        int messageStart = response.indexOf('\n', response.indexOf("+CMGR:"));
+        if (messageStart != -1) {
+            String message = response.substring(messageStart + 1);
+            message.trim();
+            
+            // Remove the message from SIM card
+            Serial1.print("AT+CMGD=");
+            Serial1.println(index);
+            delay(500);
+            
+            SerialBT.println("\n📱 GSM SMS Received:");
+            SerialBT.println("Message: " + message);
+            
+            // Check if this is a GPS message and parse it
+            if (message.startsWith("GPS ")) {
+                // Need to include WalkieTalkie.h functions
+                extern void parseIncomingGPS(String message, String commMode);
+                parseIncomingGPS(message, "GSM");
+            }
+        }
+    }
+}

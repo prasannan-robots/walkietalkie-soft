@@ -18,6 +18,7 @@ struct WalkieTalkieState {
     uint32_t myRadioID = 0x000001;
     uint8_t currentChannel = 1;
     uint8_t volume = 5;
+    String soldierID = "BSF12345"; // Default soldier ID
 };
 
 // Demo mode selector
@@ -48,6 +49,11 @@ void onSMSReceived(const DMRSMSMessage& message);
 void onCallReceived(const DMRCallInfo& callInfo);
 void onCallEnded();
 void onEmergency(uint32_t sourceID);
+
+// GPS JSON formatting functions
+String formatGPSToJSON(double lat, double lon, String soldierId, String commMode);
+void parseIncomingGPS(String message, String commMode);
+void processGPSData(double lat, double lon, String soldierId, String commMode);
 void onSMSStatus(uint32_t targetID, SMSSendStatus status);
 
 // Command processing

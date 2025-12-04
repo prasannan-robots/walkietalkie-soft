@@ -12,6 +12,15 @@ struct GPSState {
     bool hasLastLocation = false;
     unsigned long lastGPSRead = 0;
     
+    // GPS time data
+    bool hasValidTime = false;
+    int gpsHour = 0;
+    int gpsMinute = 0;
+    int gpsSecond = 0;
+    int gpsDay = 1;
+    int gpsMonth = 1;
+    int gpsYear = 2025;
+    
     // Continuous GPS transmission
     bool continuousMode = false;
     uint32_t targetID = 0;
@@ -27,3 +36,4 @@ void readGPS();
 void parseNMEA(String sentence);
 void sendGPSLocation(Stream* stream, uint32_t targetID);
 void handleContinuousGPS();
+String getGPSTimestamp();

@@ -185,8 +185,9 @@ void processCommand(Stream* stream, String command) {
                 status = "DEFAULT";
             }
             
-            // Create GPS message
+            // Create GPS message with soldier ID
             String gpsMessage = "GPS " + status + ": ";
+            gpsMessage += wtState.soldierID + ",";
             gpsMessage += String(lat, 6) + "," + String(lon, 6);
             
             // Send via SMS
@@ -245,6 +246,10 @@ void processCommand(Stream* stream, String command) {
         stream->println(gpsState.longitude, 6);
         stream->print("Valid Fix: ");
         stream->println(gpsState.hasValidFix ? "YES" : "NO");
+        stream->print("GPS Time: ");
+        stream->println(gpsState.hasValidTime ? "YES" : "NO");
+        stream->print("Timestamp: ");
+        stream->println(getGPSTimestamp());
         stream->print("Auto-send: ");
         stream->println(gpsState.continuousMode ? "ON" : "OFF");
         if (gpsState.continuousMode) {
@@ -350,6 +355,16 @@ void processCommand(Stream* stream, String command) {
             stream->println("❌ Invalid phone number");
         }
     }
+    else if (command.startsWith("soldierid ")) {
+        String soldierID = command.substring(10);
+        soldierID.trim();
+        if (soldierID.length() > 0) {
+            wtState.soldierID = soldierID;
+            stream->println("✅ Soldier ID set: " + soldierID);
+        } else {
+            stream->println("❌ Invalid soldier ID");
+        }
+    }
     else if (command.startsWith("gsmsms ")) {
         int spaceIndex = command.indexOf(' ', 7);
         if (spaceIndex != -1) {
@@ -431,6 +446,7 @@ void showCommandsTo(Stream* stream) {
     stream->println("  gsmstatus               - Check GSM module status");
     stream->println("  gsmphone <number>       - Set fallback phone number");
     stream->println("  gsmsms <number> <msg>   - Send SMS via GSM directly");
+    stream->println("  soldierid <id>          - Set soldier identification");
     stream->println();
     stream->println("Examples:");
     stream->println("  sms 123 Hello World");
@@ -443,6 +459,7 @@ void showCommandsTo(Stream* stream) {
     stream->println("  encryptkey 0102030405060708 - Custom encryption key");
     stream->println("  raw 68010101A9020110    - Send raw DMR frame");
     stream->println("  gsmphone +1234567890    - Set emergency fallback number");
+    stream->println("  soldierid BSF67890      - Set soldier ID to BSF67890");
     stream->println();
 }
 

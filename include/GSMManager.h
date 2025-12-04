@@ -19,3 +19,5 @@ bool waitForGSMResponse(String expectedResponse, unsigned long timeout);
 void checkGSMNetwork();
 void getGSMSignalStrength();
 void sendGSMFallbackSMS(String phoneNumber, String message);
+void checkIncomingGSMSMS();
+void readGSMSMS(int index);

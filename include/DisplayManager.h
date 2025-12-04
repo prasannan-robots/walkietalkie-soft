@@ -45,6 +45,12 @@ struct DisplayState {
     String inputValue = "";
     String pendingAction = "";
     
+    // Multi-step input system
+    bool multiStepInput = false;
+    int inputStep = 0;
+    String stepValues[3]; // Support up to 3 input steps
+    String stepPrompts[3];
+    
     // Command output capture
     String lastCommandOutput = "";
     bool captureOutput = false;
@@ -83,6 +89,10 @@ void createRadioConfigMenu();
 void createSMSMenu();
 void executeMenuAction(String action);
 void startInput(String prompt, String action);
+void startMultiStepInput(String action, String prompts[], int stepCount);
+void handleMultiStepInput(char c);
+void nextInputStep();
+void completeMultiStepInput();
 void handleInput(char c);
 void cancelInput();
 void confirmInput();

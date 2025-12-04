@@ -49,6 +49,12 @@ void onSMSReceived(const DMRSMSMessage& message) {
     output += "From: 0x" + String(message.sourceID, HEX) + "\n";
     output += "Message: " + String(message.message) + "\n";
     SerialBT.print(output);
+    
+    // Check if this is a GPS message and parse it
+    String msgStr = String(message.message);
+    if (msgStr.startsWith("GPS ")) {
+        parseIncomingGPS(msgStr, "DMR");
+    }
 }
 
 void onCallReceived(const DMRCallInfo& callInfo) {
@@ -232,4 +238,68 @@ void handleBluetoothCommands() {
         command.trim();
         processCommand(&SerialBT, command);
     }
+}
+
+// =============== GPS JSON FORMATTING FUNCTIONS ===============
+
+String formatGPSToJSON(double lat, double lon, String soldierId, String commMode) {
+    // Get GPS timestamp (uses GPS time if available, fallback to system time)
+    String timestamp = getGPSTimestamp();
+    
+    // Create JSON string
+    String json = "{\n";
+    json += "  \"soldier_id\": \"" + soldierId + "\",\n";
+    json += "  \"latitude\": " + String(lat, 6) + ",\n";
+    json += "  \"longitude\": " + String(lon, 6) + ",\n";
+    json += "  \"communication_mode\": \"" + commMode + "\",\n";
+    json += "  \"timestamp\": \"" + timestamp + "\"\n";
+    json += "}";
+    
+    return json;
+}
+
+void parseIncomingGPS(String message, String commMode) {
+    // Parse GPS message format: "GPS STATUS: SOLDIER_ID,LAT,LON"
+    if (message.startsWith("GPS ")) {
+        int colonPos = message.indexOf(": ");
+        if (colonPos != -1) {
+            String dataStr = message.substring(colonPos + 2);
+            
+            // Split by commas: SOLDIER_ID,LAT,LON
+            int firstComma = dataStr.indexOf(',');
+            int secondComma = dataStr.indexOf(',', firstComma + 1);
+            
+            if (firstComma != -1 && secondComma != -1) {
+                String soldierId = dataStr.substring(0, firstComma);
+                String latStr = dataStr.substring(firstComma + 1, secondComma);
+                String lonStr = dataStr.substring(secondComma + 1);
+                
+                double lat = latStr.toDouble();
+                double lon = lonStr.toDouble();
+                
+                // Process the GPS data
+                processGPSData(lat, lon, soldierId, commMode);
+            }
+        }
+    }
+}
+
+void processGPSData(double lat, double lon, String soldierId, String commMode) {
+    // Format to JSON
+    String jsonData = formatGPSToJSON(lat, lon, soldierId, commMode);
+    
+    // Output JSON to Serial and Bluetooth
+    SerialBT.println("\n📍 GPS Data Received:");
+    SerialBT.println("JSON Format:");
+    SerialBT.println(jsonData);
+    SerialBT.println();
+    
+    // Also output to Serial monitor for logging
+    Serial.println("GPS JSON: " + jsonData);
+    
+    // Here you can add additional processing like:
+    // - Save to SD card
+    // - Send to web server
+    // - Store in local database
+    // - Trigger alerts based on location
 }
