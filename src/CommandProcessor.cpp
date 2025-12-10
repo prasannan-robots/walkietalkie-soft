@@ -437,6 +437,44 @@ void processCommand(Stream* stream, String command) {
             stream->println(gsmState.operatorName);
         }
     }
+    else if (command.startsWith("gsmcmd ")) {
+        // Send raw AT command to GSM module and print response
+        String atCmd = command.substring(7);
+        atCmd.trim();
+        
+        if (atCmd.length() == 0) {
+            stream->println("❌ Usage: gsmcmd <AT_command>");
+            stream->println("Example: gsmcmd AT");
+            stream->println("Example: gsmcmd AT+CSQ");
+            return;
+        }
+        
+        stream->print("📱 Sending to GSM: ");
+        stream->println(atCmd);
+        stream->println("---");
+        
+        // Send command to GSM module
+        Serial1.println(atCmd);
+        delay(500);
+        
+        // Read and print response
+        unsigned long timeout = 2000;
+        unsigned long startTime = millis();
+        String response = "";
+        
+        while (millis() - startTime < timeout && Serial1.available()) {
+            char c = Serial1.read();
+            response += c;
+            stream->write(c); // Print each character as received
+            delay(2);
+        }
+        
+        if (response.length() == 0) {
+            stream->println("\n❌ No response from GSM module");
+        } else {
+            stream->println("\n---");
+        }
+    }
     else if (command.startsWith("gsmphone ")) {
         String phone = command.substring(9);
         phone.trim();
@@ -614,6 +652,7 @@ void showCommandsTo(Stream* stream) {
     stream->println();
     stream->println("GSM Fallback:");
     stream->println("  gsmstatus               - Check GSM module status");
+    stream->println("  gsmcmd <AT_command>     - Send raw AT cmd to GSM");
     stream->println("  gsmphone <number>       - Set fallback phone number");
     stream->println("  gsmsms <number> <msg>   - Send SMS via GSM directly");
     stream->println("  soldierid <id>          - Set soldier identification");
