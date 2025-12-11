@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include "SIM800L.h"
 
 // GSM state structure
 struct GSMState {
@@ -12,10 +13,10 @@ struct GSMState {
 };
 
 extern GSMState gsmState;
+extern SIM800L gsm;
 
 // GSM functions
 void initializeGSM();
-bool waitForGSMResponse(String expectedResponse, unsigned long timeout);
 void checkGSMNetwork();
 void getGSMSignalStrength();
 void sendGSMFallbackSMS(String phoneNumber, String message);
